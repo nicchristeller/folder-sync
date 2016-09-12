@@ -1,3 +1,4 @@
+import subprocess
 import sys
 import os
 import shutil
@@ -8,6 +9,7 @@ import time
 
 LOG_ONLY = False
 FORCE_REMOVE = False
+SHOW_ACTIONS = False
 LOG_DIR_PATH = "C:\\Users\\Nic\\Documents\\Mine\\Coding\\file-copier\\logs\\"
 time_str = time.strftime('%H.%M-%d-%b-%Y')
 LOG_FILE_NAME = "log-" + time_str + ".txt"
@@ -78,6 +80,8 @@ def log(message):
     global most_recent_action
     most_recent_action = message
     LOG_FILE.write(message + "\n\n")
+    if SHOW_ACTIONS:
+        print(message)
 
 
 def remove_readonly(func, path, excinfo):
@@ -96,13 +100,42 @@ def remove_file(path):
         if (FORCE_REMOVE):
             os.chmod(path, stat.S_IWRITE)
             os.remove(path)
+        else:
+            raise
+
+
+def error_dialog():
+    # add instructions to retry in forced mode if not currently in forced mode
+    force_instructions = "" if FORCE_REMOVE else "Press retry to rerun in forced mode."
+    print("\n\nFORCED MODE:", FORCE_REMOVE)
+    message_box = ctypes.windll.user32.MessageBoxW(
+                    0,
+                    "There was an error when syncing folder %s with %s. %s See error.txt for more details. \n\nError encountered while %s"
+                    % (sys.argv[1], sys.argv[2], force_instructions, most_recent_action.replace(sys.argv[1], "").replace(sys.argv[2], "")),
+                    "Folder sync error",
+                    0x5)
+    if message_box == 4:
+        # retry clicked
+        try:
+            command = ["C:\\Program Files\\Python33\\python.exe",
+                       "C:\\Users\\Nic\\Documents\\Mine\\Coding\\file-copier\\sync-folders.py",
+                       sys.argv[1], sys.argv[2], "force"]
+            print("\n\nCalling command:\n", command)
+            result = subprocess.check_output(command)#,
+                                             # stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            print(str(e.output))
+            error_dialog()
 
 # Sample usage via cmd
 # "C:\Program Files\Python33\python.exe" "C:\Users\Nic\Documents\Mine\Coding\file-copier\sync-folders.py" "C:\Users\Nic\Documents\Mine" "C:\Users\Nic\Google Drive\Mine" log force
-# arguments expected: src_dir dst_dir [log] [force]
-# log must be the word log. If so, no actions will be taken: only a log will be produced
-# force must be the word force. If so, the program will make an attempt to delete read-only files if found
-if len(sys.argv) in (3, 4, 5):
+# arguments expected: src_dir dst_dir [log] [force] [actions]
+# log is optional. If present, no actions will be taken: only a log will be produced
+# force is optional. If present, the program will make an attempt to delete read-only files if found
+# actions is optional. If present, the program will print its actions to standard output as it goes
+#
+print("\n\nCommand line arguments:\n", sys.argv)
+if len(sys.argv) in (range(3,7)):
     source_directory = sys.argv[1]
     if os.path.exists(source_directory):
         destination_directory = sys.argv[2]
@@ -111,19 +144,21 @@ if len(sys.argv) in (3, 4, 5):
             LOG_ONLY = True
         if 'force' in optional_args:
             FORCE_REMOVE = True
+            LOG_FILE_NAME = LOG_FILE_NAME.replace(".txt", "-forced.txt")
+            ERROR_FILE_NAME = ERROR_FILE_NAME.replace(".txt", "-forced.txt")
+        if 'actions' in optional_args:
+            SHOW_ACTIONS = True
         with open(LOG_DIR_PATH + LOG_FILE_NAME, 'w') as LOG_FILE:
             try:
                 sync_folders(source_directory, destination_directory)
+                print("Done!")
             except:
                 with open(LOG_DIR_PATH + ERROR_FILE_NAME, 'w') as ERROR_FILE:
                     ERROR_FILE.write(traceback.format_exc())
-                    ERROR_FILE.write("\nError while completing action:\n%s" % most_recent_action)
-                ctypes.windll.user32.MessageBoxW(
-                    0,
-                    "There was an error when syncing folder %s with %s. Please see error.txt for details."
-                    % (sys.argv[1], sys.argv[2]),
-                    "Folder sync error",
-                    1)
+                    ERROR_FILE.write("\nError while completing action%s:\n%s" %
+                                     (" (forced mode)" if FORCE_REMOVE else "",
+                                      most_recent_action))
+                error_dialog()
                 raise
     else:
         raise NotADirectoryError(source_directory)
