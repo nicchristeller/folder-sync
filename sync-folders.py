@@ -15,6 +15,8 @@ ERROR_FILE_NAME = None
 LOG_FILE = None
 
 most_recent_action = ""
+source_directory = None
+destination_directory = None
 
 
 # copies the contents of root_src_dir to root_dst_dir
@@ -22,6 +24,8 @@ most_recent_action = ""
 # files in root_dst_dir that aren't in root_src_dir will be deleted
 def sync_folders(root_src_dir, root_dst_dir):
     global LOG_FILE, LOG_FILE_NAME, ERROR_FILE_NAME
+
+    log("Syncing")
 
     time_str = time.strftime('%H.%M-%d-%b-%Y')
     LOG_FILE_NAME = "log-" + time_str + ".txt"
@@ -125,15 +129,15 @@ def error_occurred():
                     0,
                     "There was an error when syncing folder %s with %s. %s See error.txt for more details. \n\n"
                     "Error encountered while %s"
-                    % (sys.argv[1], sys.argv[2], force_instructions, most_recent_action.replace(sys.argv[1], "")
-                       .replace(sys.argv[2], "")),
+                    % (source_directory, destination_directory, force_instructions,
+                       most_recent_action.replace(source_directory, "").replace(destination_directory, "")),
                     "Folder sync error",
                     0x5)
     if message_box == 4:
         # retry clicked
         global FORCE_REMOVE
         FORCE_REMOVE = True
-        sync_folders(sys.argv[1], sys.argv[2])
+        sync_folders(source_directory, destination_directory)
 
 # Sample usage via cmd
 # "C:\Program Files\Python33\python.exe" "C:\Users\Nic\Documents\Mine\Coding\file-copier\sync-folders.py" "C:\Users\Nic\Documents\Mine" "C:\Users\Nic\Google Drive\Mine" log force
