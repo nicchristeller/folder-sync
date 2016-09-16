@@ -22,6 +22,12 @@ most_recent_action = ""
 # files will only be overridden if they are more recently modified
 # files in root_dst_dir that aren't in root_src_dir will be deleted
 def sync_folders(root_src_dir, root_dst_dir):
+    time_str = time.strftime('%H.%M-%d-%b-%Y')
+    LOG_FILE_NAME = "log-" + time_str + ".txt"
+    ERROR_FILE_NAME = "error-" + time_str + ".txt"
+    if FORCE_REMOVE:
+        LOG_FILE_NAME = LOG_FILE_NAME.replace(".txt", "-forced.txt")
+        ERROR_FILE_NAME = ERROR_FILE_NAME.replace(".txt", "-forced.txt")
     merge_folders(root_src_dir, root_dst_dir)
     delete_nonexistent_files(root_src_dir, root_dst_dir)
 
@@ -97,7 +103,7 @@ def remove_file(path):
     try:
         os.remove(path)
     except PermissionError:
-        if (FORCE_REMOVE):
+        if FORCE_REMOVE:
             os.chmod(path, stat.S_IWRITE)
             os.remove(path)
         else:
@@ -116,16 +122,9 @@ def error_dialog():
                     0x5)
     if message_box == 4:
         # retry clicked
-        try:
-            command = ["C:\\Program Files\\Python33\\python.exe",
-                       "C:\\Users\\Nic\\Documents\\Mine\\Coding\\file-copier\\sync-folders.py",
-                       sys.argv[1], sys.argv[2], "force"]
-            print("\n\nCalling command:\n", command)
-            result = subprocess.check_output(command)#,
-                                             # stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as e:
-            print(str(e.output))
-            error_dialog()
+        global FORCE_REMOVE
+        FORCE_REMOVE = True
+        sync_folders(sys.argv[1], sys.argv[2])
 
 # Sample usage via cmd
 # "C:\Program Files\Python33\python.exe" "C:\Users\Nic\Documents\Mine\Coding\file-copier\sync-folders.py" "C:\Users\Nic\Documents\Mine" "C:\Users\Nic\Google Drive\Mine" log force
@@ -135,7 +134,7 @@ def error_dialog():
 # actions is optional. If present, the program will print its actions to standard output as it goes
 #
 print("\n\nCommand line arguments:\n", sys.argv)
-if len(sys.argv) in (range(3,7)):
+if len(sys.argv) in (range(3, 7)):
     source_directory = sys.argv[1]
     if os.path.exists(source_directory):
         destination_directory = sys.argv[2]
@@ -144,8 +143,6 @@ if len(sys.argv) in (range(3,7)):
             LOG_ONLY = True
         if 'force' in optional_args:
             FORCE_REMOVE = True
-            LOG_FILE_NAME = LOG_FILE_NAME.replace(".txt", "-forced.txt")
-            ERROR_FILE_NAME = ERROR_FILE_NAME.replace(".txt", "-forced.txt")
         if 'actions' in optional_args:
             SHOW_ACTIONS = True
         with open(LOG_DIR_PATH + LOG_FILE_NAME, 'w') as LOG_FILE:
