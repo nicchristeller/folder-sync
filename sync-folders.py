@@ -6,10 +6,10 @@ import sys
 import time
 import traceback
 
-LOG_ONLY = False
-FORCE_REMOVE = False
-SHOW_ACTIONS = False
 LOG_DIR_PATH = "C:\\Users\\Nic\\Documents\\Mine\\Coding\\file-copier\\logs\\"
+LOG_ONLY = None
+FORCE_REMOVE = None
+SHOW_ACTIONS = None
 LOG_FILE_NAME = None
 ERROR_FILE_NAME = None
 LOG_FILE = None
@@ -151,12 +151,9 @@ if len(sys.argv) in (range(3, 7)):
     if os.path.exists(source_directory):
         destination_directory = sys.argv[2]
         optional_args = sys.argv[3:]
-        if 'log' in optional_args:
-            LOG_ONLY = True
-        if 'force' in optional_args:
-            FORCE_REMOVE = True
-        if 'actions' in optional_args:
-            SHOW_ACTIONS = True
+        LOG_ONLY = 'log' in optional_args
+        FORCE_REMOVE = 'force' in optional_args
+        SHOW_ACTIONS = 'actions' in optional_args
         try:
             sync_folders(source_directory, destination_directory)
             print("Done!")
