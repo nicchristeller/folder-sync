@@ -1,19 +1,18 @@
-import subprocess
-import sys
+import ctypes
 import os
 import shutil
-import traceback
-import ctypes
 import stat
+import sys
 import time
+import traceback
 
 LOG_ONLY = False
 FORCE_REMOVE = False
 SHOW_ACTIONS = False
 LOG_DIR_PATH = "C:\\Users\\Nic\\Documents\\Mine\\Coding\\file-copier\\logs\\"
-time_str = time.strftime('%H.%M-%d-%b-%Y')
-LOG_FILE_NAME = "log-" + time_str + ".txt"
-ERROR_FILE_NAME = "error-" + time_str + ".txt"
+LOG_FILE_NAME = None
+ERROR_FILE_NAME = None
+LOG_FILE = None
 
 most_recent_action = ""
 
@@ -22,14 +21,18 @@ most_recent_action = ""
 # files will only be overridden if they are more recently modified
 # files in root_dst_dir that aren't in root_src_dir will be deleted
 def sync_folders(root_src_dir, root_dst_dir):
+    global LOG_FILE, LOG_FILE_NAME, ERROR_FILE_NAME
+
     time_str = time.strftime('%H.%M-%d-%b-%Y')
     LOG_FILE_NAME = "log-" + time_str + ".txt"
     ERROR_FILE_NAME = "error-" + time_str + ".txt"
     if FORCE_REMOVE:
         LOG_FILE_NAME = LOG_FILE_NAME.replace(".txt", "-forced.txt")
         ERROR_FILE_NAME = ERROR_FILE_NAME.replace(".txt", "-forced.txt")
-    merge_folders(root_src_dir, root_dst_dir)
-    delete_nonexistent_files(root_src_dir, root_dst_dir)
+
+    with open(LOG_DIR_PATH + LOG_FILE_NAME, 'w') as LOG_FILE:
+        merge_folders(root_src_dir, root_dst_dir)
+        delete_nonexistent_files(root_src_dir, root_dst_dir)
 
 
 # copies the contents of root_src_dir to root_dst_dir
@@ -110,14 +113,22 @@ def remove_file(path):
             raise
 
 
-def error_dialog():
+def error_occurred():
+    # noinspection PyTypeChecker
+    with open(LOG_DIR_PATH + ERROR_FILE_NAME, 'w') as ERROR_FILE:
+        ERROR_FILE.write(traceback.format_exc())
+        ERROR_FILE.write("\nError while completing action%s:\n%s" %
+                         (" (forced mode)" if FORCE_REMOVE else "",
+                          most_recent_action))
     # add instructions to retry in forced mode if not currently in forced mode
     force_instructions = "" if FORCE_REMOVE else "Press retry to rerun in forced mode."
     print("\n\nFORCED MODE:", FORCE_REMOVE)
     message_box = ctypes.windll.user32.MessageBoxW(
                     0,
-                    "There was an error when syncing folder %s with %s. %s See error.txt for more details. \n\nError encountered while %s"
-                    % (sys.argv[1], sys.argv[2], force_instructions, most_recent_action.replace(sys.argv[1], "").replace(sys.argv[2], "")),
+                    "There was an error when syncing folder %s with %s. %s See error.txt for more details. \n\n"
+                    "Error encountered while %s"
+                    % (sys.argv[1], sys.argv[2], force_instructions, most_recent_action.replace(sys.argv[1], "")
+                       .replace(sys.argv[2], "")),
                     "Folder sync error",
                     0x5)
     if message_box == 4:
@@ -145,18 +156,12 @@ if len(sys.argv) in (range(3, 7)):
             FORCE_REMOVE = True
         if 'actions' in optional_args:
             SHOW_ACTIONS = True
-        with open(LOG_DIR_PATH + LOG_FILE_NAME, 'w') as LOG_FILE:
-            try:
-                sync_folders(source_directory, destination_directory)
-                print("Done!")
-            except:
-                with open(LOG_DIR_PATH + ERROR_FILE_NAME, 'w') as ERROR_FILE:
-                    ERROR_FILE.write(traceback.format_exc())
-                    ERROR_FILE.write("\nError while completing action%s:\n%s" %
-                                     (" (forced mode)" if FORCE_REMOVE else "",
-                                      most_recent_action))
-                error_dialog()
-                raise
+        try:
+            sync_folders(source_directory, destination_directory)
+            print("Done!")
+        except:
+            error_occurred()
+            raise
     else:
         raise NotADirectoryError(source_directory)
 else:
