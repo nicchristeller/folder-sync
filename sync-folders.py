@@ -146,7 +146,6 @@ def error_occurred():
 # force is optional. If present, the program will make an attempt to delete read-only files if found
 # actions is optional. If present, the program will print its actions to standard output as it goes
 #
-print("\n\nCommand line arguments:\n", sys.argv)
 if len(sys.argv) in (range(3, 7)):
     source_directory = sys.argv[1]
     if os.path.exists(source_directory):
