@@ -120,9 +120,7 @@ def error_occurred():
         ERROR_FILE.write("\nError while completing action%s:\n%s" %
                          (" (forced mode)" if FORCE_REMOVE else "",
                           most_recent_action))
-    # add instructions to retry in forced mode if not currently in forced mode
     force_instructions = "" if FORCE_REMOVE else "Press retry to rerun in forced mode."
-    print("\n\nFORCED MODE:", FORCE_REMOVE)
     message_box = ctypes.windll.user32.MessageBoxW(
                     0,
                     "There was an error when syncing folder %s with %s. %s See error.txt for more details. \n\n"
@@ -165,5 +163,5 @@ if len(sys.argv) in (range(3, 7)):
     else:
         raise NotADirectoryError(source_directory)
 else:
-    raise SyntaxError("Must have 2 arguments: an existing source directory and the desired destination directory. 2" +
+    raise SyntaxError("Must have 2 arguments: an existing source directory and the desired destination directory. 2 "
                       "flags are optional.")
